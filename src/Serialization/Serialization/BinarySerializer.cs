@@ -11,21 +11,75 @@ using System.Text;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
-public class ReflectionBinarySerializer<TModel>
+public partial class BinarySerializer<TModel>
 {
     SerializationSettings settings;
-    public ReflectionBinarySerializer(SerializationSettings settings = null)
+    static readonly Dictionary<Type, PropertyInfo[]> typesCache = new Dictionary<Type, PropertyInfo[]>();
+    static readonly Dictionary<Type, Action<object, Stream>> classSerializersCache = new Dictionary<Type, Action<object, Stream>>();
+    Action<object, Stream> GetClassSerializer(Type type)
+    {
+        if (!classSerializersCache.TryGetValue(type, out var serializer))
+        {
+            serializer = CreateClassSerializer(type);
+            classSerializersCache.Add(type, serializer);
+        }
+        return serializer;
+    }
+    Action<object, Stream> CreateClassSerializer(Type type)
+    {
+        return (obj, stream) =>
+        {
+            var properties = GetTypeInfo(type);
+            foreach (var property in properties)
+            {
+                var value = property.GetValue(obj);
+                var serializer = SerializerFor(property.PropertyType);
+                serializer(value, stream);
+            }
+        };
+    }
+    static readonly Dictionary<Type, Func<Stream, object>> classDeserializersCache = new Dictionary<Type, Func<Stream, object>>();
+    Func<Stream, object> GetClassDeserializer(Type type)
+    {
+        if (!classDeserializersCache.TryGetValue(type, out var deserializer))
+        {
+            deserializer = CreateClassDeserializer(type);
+            classDeserializersCache.Add(type, deserializer);
+        }
+        return deserializer;
+    }
+    Func<Stream, object> CreateClassDeserializer(Type type)
+    {
+        return stream =>
+        {
+            var obj = Activator.CreateInstance(type);
+            var properties = GetTypeInfo(type);
+            foreach (var property in properties)
+            {
+                var deserializer = DeserializerFor(property.PropertyType);
+                var value = deserializer(stream);
+                property.SetValue(obj, value);
+            }
+            return obj;
+        };
+    }
+    public BinarySerializer(SerializationSettings settings = null)
     {
         this.settings = settings ?? new SerializationSettings();
+    }
+    private PropertyInfo[] GetTypeInfo(Type t)
+    {
         var bindingFlags = BindingFlags.Public | BindingFlags.Instance;
-        if (this.settings.SerializePrivates) bindingFlags |= BindingFlags.NonPublic;
-        var pgetters = typeof(TModel)
-            .GetProperties(bindingFlags)
-            .Where(p => p.CanWrite && p.CanRead)
-            .OrderBy(p => p.Name)
-            .Select(TypeAndGetter)
-            .Select(p => (serializer: SerializerFor(p.type), getter: p.getter))
-            .ToArray();
+        if (settings.SerializePrivates) bindingFlags |= BindingFlags.NonPublic;
+        if (!typesCache.TryGetValue(t, out var properties))
+        {
+            properties = t.GetProperties(bindingFlags)
+                           .Where(p => p.CanWrite && p.CanRead)
+                           .OrderBy(p => p.Name)
+                           .ToArray();
+            typesCache.Add(t, properties);
+        }
+        return properties;
     }
 
     public Action<object, Stream> SerializerFor(Type type)
@@ -77,6 +131,18 @@ public class ReflectionBinarySerializer<TModel>
                     var tbytes = settings.TextEncoding.GetBytes(v);
                     s.Write(tbytes, 0, tbytes.Length);
                 };
+            case Type t when t.IsGenericType && t.GetGenericTypeDefinition() == typeof(List<>):
+                return (o, s) =>
+                {
+                    var itemType = t.GetGenericArguments()[0];
+                    var itemSerializer = SerializerFor(itemType);
+                    var list = (IList)o;
+                    s.Write(BitConverter.GetBytes(list.Count), 0, 4);
+                    foreach (var item in list)
+                    {
+                        itemSerializer(item, s);
+                    }
+                };
             case Type t when t.IsArray && t.GetArrayRank() == 1:
                 return (o, s) =>
                 {
@@ -90,9 +156,40 @@ public class ReflectionBinarySerializer<TModel>
                         itemSerializer(x, s);
                     }
                 };
+            case Type t when t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Dictionary<,>):
+                return (o, s) =>
+                {
+                    var keyType = t.GetGenericArguments()[0];
+                    var valueType = t.GetGenericArguments()[1];
+                    var keySerializer = SerializerFor(keyType);
+                    var valueSerializer = SerializerFor(valueType);
+                    var dictionary = (IDictionary)o;
+                    s.Write(BitConverter.GetBytes(dictionary.Count), 0, 4);
+                    foreach (DictionaryEntry entry in dictionary)
+                    {
+                        keySerializer(entry.Key, s);
+                        valueSerializer(entry.Value, s);
+                    }
+                };
+            case Type t when t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>):
+                return (o, s) =>
+                {
+                    var itemType = t.GetGenericArguments()[0];
+                    var itemSerializer = SerializerFor(itemType);
+                    var enumerable = (IEnumerable)o;
+                    var list = enumerable.Cast<object>().ToList(); // Convert IEnumerable to List to count items
+                    s.Write(BitConverter.GetBytes(list.Count), 0, 4);
+                    foreach (var item in list)
+                    {
+                        itemSerializer(item, s);
+                    }
+                };
+            case Type t when t.IsClass:
+                return GetClassSerializer(t);
             default: throw new Exception("type not implemented");
         }
     }
+
     public Func<Stream, object> DeserializerFor(Type type)
     {
         switch (type)
@@ -108,7 +205,7 @@ public class ReflectionBinarySerializer<TModel>
             case Type t when t == typeof(ulong):
                 return s => BitConverter.ToUInt64(ReadBytes(s, 8), 0);
             case Type t when t == typeof(ushort):
-                return s => BitConverter.ToUInt16(ReadBytes(s, 2), 0);           
+                return s => BitConverter.ToUInt16(ReadBytes(s, 2), 0);
             case Type t when t == typeof(byte):
                 return s => (byte)s.ReadByte();
             case Type t when t == typeof(sbyte):
@@ -142,6 +239,20 @@ public class ReflectionBinarySerializer<TModel>
                     var stringBytes = ReadBytes(s, length);
                     return Encoding.UTF8.GetString(stringBytes);
                 };
+            case Type t when t.IsGenericType && t.GetGenericTypeDefinition() == typeof(List<>):
+                return s =>
+                {
+                    var elementType = t.GetGenericArguments()[0];
+                    var deserializer = DeserializerFor(elementType);
+                    var count = BitConverter.ToInt32(ReadBytes(s, 4), 0);
+                    var listType = typeof(List<>).MakeGenericType(elementType);
+                    var list = (IList)Activator.CreateInstance(listType);
+                    for (int i = 0; i < count; i++)
+                    {
+                        list.Add(deserializer(s));
+                    }
+                    return list;
+                };
             case Type t when t.IsArray && t.GetArrayRank() == 1:
                 return s =>
                 {
@@ -155,6 +266,39 @@ public class ReflectionBinarySerializer<TModel>
                     }
                     return array;
                 };
+            case Type t when t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Dictionary<,>):
+                return s =>
+                {
+                    var keyType = t.GetGenericArguments()[0];
+                    var valueType = t.GetGenericArguments()[1];
+                    var keyDeserializer = DeserializerFor(keyType);
+                    var valueDeserializer = DeserializerFor(valueType);
+                    var count = BitConverter.ToInt32(ReadBytes(s, 4), 0);
+                    var dictionaryType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
+                    var dictionary = (IDictionary)Activator.CreateInstance(dictionaryType);
+                    for (int i = 0; i < count; i++)
+                    {
+                        var key = keyDeserializer(s);
+                        var value = valueDeserializer(s);
+                        dictionary.Add(key, value);
+                    }
+                    return dictionary;
+                };
+            case Type t when t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>):
+                return s =>
+                {
+                    var elementType = t.GetGenericArguments()[0];
+                    var deserializer = DeserializerFor(elementType);
+                    var count = BitConverter.ToInt32(ReadBytes(s, 4), 0);
+                    var array = Array.CreateInstance(elementType, count);
+                    for (int i = 0; i < count; i++)
+                    {
+                        array.SetValue(deserializer(s), i);
+                    }
+                    return array;
+                };
+            case Type t when t.IsClass && !t.IsAbstract && !t.IsInterface:
+                return GetClassDeserializer(t);
             default:
                 throw new Exception("Type not implemented");
         }
@@ -166,8 +310,8 @@ public class ReflectionBinarySerializer<TModel>
         stream.Read(bytes, 0, count);
         return bytes;
     }
-    static (Type type, Func<TModel, object> getter) TypeAndGetter(PropertyInfo pinfo)
-        => (pinfo.PropertyType, (TModel model) => pinfo.GetValue(model));
+
+
 }
 public class SerializationSettings
 {

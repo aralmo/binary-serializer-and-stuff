@@ -1,7 +1,6 @@
-using System.Collections;
-namespace Generator;
+namespace Serialization;
 
-public class SerializerTests
+public class BasicTypesSerializationTests
 {
     [Theory]
     [InlineData(42)]
@@ -10,7 +9,7 @@ public class SerializerTests
     [InlineData(-1)]
     public void SerializeDeserialize_Int(int value)
     {
-        var serializer = new ReflectionBinarySerializer<int>();
+        var serializer = new BinarySerializer<int>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(int))(value, stream);
         stream.Position = 0;
@@ -24,7 +23,7 @@ public class SerializerTests
     [InlineData(uint.MaxValue)]
     public void SerializeDeserialize_UInt(uint value)
     {
-        var serializer = new ReflectionBinarySerializer<uint>();
+        var serializer = new BinarySerializer<uint>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(uint))(value, stream);
         stream.Position = 0;
@@ -39,7 +38,7 @@ public class SerializerTests
     [InlineData(-1L)]
     public void SerializeDeserialize_Long(long value)
     {
-        var serializer = new ReflectionBinarySerializer<long>();
+        var serializer = new BinarySerializer<long>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(long))(value, stream);
         stream.Position = 0;
@@ -53,7 +52,7 @@ public class SerializerTests
     [InlineData(ulong.MaxValue)]
     public void SerializeDeserialize_ULong(ulong value)
     {
-        var serializer = new ReflectionBinarySerializer<ulong>();
+        var serializer = new BinarySerializer<ulong>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(ulong))(value, stream);
         stream.Position = 0;
@@ -68,7 +67,7 @@ public class SerializerTests
     [InlineData((short)-1)]
     public void SerializeDeserialize_Short(short value)
     {
-        var serializer = new ReflectionBinarySerializer<short>();
+        var serializer = new BinarySerializer<short>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(short))(value, stream);
         stream.Position = 0;
@@ -82,7 +81,7 @@ public class SerializerTests
     [InlineData(ushort.MaxValue)]
     public void SerializeDeserialize_UShort(ushort value)
     {
-        var serializer = new ReflectionBinarySerializer<ushort>();
+        var serializer = new BinarySerializer<ushort>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(ushort))(value, stream);
         stream.Position = 0;
@@ -96,7 +95,7 @@ public class SerializerTests
     [InlineData(byte.MaxValue)]
     public void SerializeDeserialize_Byte(byte value)
     {
-        var serializer = new ReflectionBinarySerializer<byte>();
+        var serializer = new BinarySerializer<byte>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(byte))(value, stream);
         stream.Position = 0;
@@ -110,7 +109,7 @@ public class SerializerTests
     [InlineData(sbyte.MaxValue)]
     public void SerializeDeserialize_SByte(sbyte value)
     {
-        var serializer = new ReflectionBinarySerializer<sbyte>();
+        var serializer = new BinarySerializer<sbyte>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(sbyte))(value, stream);
         stream.Position = 0;
@@ -123,7 +122,7 @@ public class SerializerTests
     [InlineData(false)]
     public void SerializeDeserialize_Bool(bool value)
     {
-        var serializer = new ReflectionBinarySerializer<bool>();
+        var serializer = new BinarySerializer<bool>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(bool))(value, stream);
         stream.Position = 0;
@@ -137,7 +136,7 @@ public class SerializerTests
     [InlineData(char.MaxValue)]
     public void SerializeDeserialize_Char(char value)
     {
-        var serializer = new ReflectionBinarySerializer<char>();
+        var serializer = new BinarySerializer<char>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(char))(value, stream);
         stream.Position = 0;
@@ -151,7 +150,7 @@ public class SerializerTests
     [InlineData(" ")]
     public void SerializeDeserialize_String(string value)
     {
-        var serializer = new ReflectionBinarySerializer<string>();
+        var serializer = new BinarySerializer<string>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(string))(value, stream);
         stream.Position = 0;
@@ -166,7 +165,7 @@ public class SerializerTests
     [InlineData(-3.14f)]
     public void SerializeDeserialize_Float(float value)
     {
-        var serializer = new ReflectionBinarySerializer<float>();
+        var serializer = new BinarySerializer<float>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(float))(value, stream);
         stream.Position = 0;
@@ -181,7 +180,7 @@ public class SerializerTests
     [InlineData(-3.14)]
     public void SerializeDeserialize_Double(double value)
     {
-        var serializer = new ReflectionBinarySerializer<double>();
+        var serializer = new BinarySerializer<double>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(double))(value, stream);
         stream.Position = 0;
@@ -194,18 +193,18 @@ public class SerializerTests
     [InlineData(-42)]
     public void SerializeDeserialize_Decimal(decimal value)
     {
-        var serializer = new ReflectionBinarySerializer<decimal>();
+        var serializer = new BinarySerializer<decimal>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(decimal))(value, stream);
         stream.Position = 0;
         var deserializedValue = (decimal)serializer.DeserializerFor(typeof(decimal))(stream);
         Assert.Equal(value, deserializedValue);
     }
-    
+
     [Fact]
     public void SerializeDeserialize_DecimalMinMax()
     {
-        var serializer = new ReflectionBinarySerializer<decimal>();
+        var serializer = new BinarySerializer<decimal>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(decimal))(decimal.MinValue, stream);
         stream.Position = 0;
@@ -225,7 +224,7 @@ public class SerializerTests
     [InlineData("4000-12-31T23:59:59.9999999Z")] // DateTime.MaxValue
     public void SerializeDeserialize_DateTime(DateTime value)
     {
-        var serializer = new ReflectionBinarySerializer<DateTime>();
+        var serializer = new BinarySerializer<DateTime>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(DateTime))(value, stream);
         stream.Position = 0;
@@ -239,11 +238,35 @@ public class SerializerTests
     public void SerializeDeserialize_TimeSpan(double seconds)
     {
         var value = TimeSpan.FromSeconds(seconds);
-        var serializer = new ReflectionBinarySerializer<TimeSpan>();
+        var serializer = new BinarySerializer<TimeSpan>();
         var stream = new MemoryStream();
         serializer.SerializerFor(typeof(TimeSpan))(value, stream);
         stream.Position = 0;
         var deserializedValue = (TimeSpan)serializer.DeserializerFor(typeof(TimeSpan))(stream);
+        Assert.Equal(value, deserializedValue);
+    }
+
+    [Fact]
+    public void SerializeDeserialize_IntArray()
+    {
+        int[] value = { 1, 2, 3, 4, 5 };
+        var serializer = new BinarySerializer<int[]>();
+        var stream = new MemoryStream();
+        serializer.SerializerFor(typeof(int[]))(value, stream);
+        stream.Position = 0;
+        var deserializedValue = (int[])serializer.DeserializerFor(typeof(int[]))(stream);
+        Assert.Equal(value, deserializedValue);
+    }
+
+    [Fact]
+    public void SerializeDeserialize_StringArray()
+    {
+        string[] value = { "Hello", "World", "Serialization", "Test" };
+        var serializer = new BinarySerializer<string[]>();
+        var stream = new MemoryStream();
+        serializer.SerializerFor(typeof(string[]))(value, stream);
+        stream.Position = 0;
+        var deserializedValue = (string[])serializer.DeserializerFor(typeof(string[]))(stream);
         Assert.Equal(value, deserializedValue);
     }
 }
