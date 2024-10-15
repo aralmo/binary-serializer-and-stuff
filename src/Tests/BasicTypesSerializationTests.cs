@@ -157,6 +157,34 @@ public class BasicTypesSerializationTests
         var deserializedValue = (string)serializer.DeserializerFor(typeof(string))(stream);
         Assert.Equal(value, deserializedValue);
     }
+    [Fact]
+    public void SerializeDeserialize_MultipleStrings()
+    {
+        var serializer = new BinarySerializer<string>();
+        var stream = new MemoryStream();
+        var stringsToSerialize = new[] { "Hello", "World", "Foo", "Bar" };
+        
+        // Serialize strings
+        foreach (var str in stringsToSerialize)
+        {
+            serializer.SerializerFor(typeof(string))(str, stream);
+        }
+
+        stream.Position = 0;
+
+        // Deserialize strings
+        var deserializedStrings = new string[stringsToSerialize.Length];
+        for (int i = 0; i < stringsToSerialize.Length; i++)
+        {
+            deserializedStrings[i] = (string)serializer.DeserializerFor(typeof(string))(stream);
+        }
+
+        // Assert each string is equal to its original
+        for (int i = 0; i < stringsToSerialize.Length; i++)
+        {
+            Assert.Equal(stringsToSerialize[i], deserializedStrings[i]);
+        }
+    }
 
     [Theory]
     [InlineData(3.14f)]

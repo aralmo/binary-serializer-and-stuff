@@ -1,3 +1,6 @@
+using FluentAssertions;
+using Xunit.Sdk;
+
 namespace Serialization;
 public class ComplexTypeSerializationTests
 {
