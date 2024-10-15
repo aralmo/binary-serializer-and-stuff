@@ -1,7 +1,7 @@
 using FluentAssertions;
 using System;
 
-namespace Serialization;
+namespace SerializationTests;
 
 public class FragmentSerialization
 {

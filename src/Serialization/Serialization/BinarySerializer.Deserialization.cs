@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-public partial class BinarySerializer<TModel>
+internal partial class BinarySerializer<TModel>
 {
     static readonly Dictionary<Type, Func<Stream, object>> classDeserializersCache = new Dictionary<Type, Func<Stream, object>>();
     static readonly Dictionary<Type, Func<Stream, object>> abstractClassDeserializersCache = new Dictionary<Type, Func<Stream, object>>();
@@ -66,8 +66,7 @@ public partial class BinarySerializer<TModel>
             return obj;
         };
     }
-
-    public Func<Stream, object> DeserializerFor(Type type)
+    internal Func<Stream, object> DeserializerFor(Type type)
     {
         switch (type)
         {

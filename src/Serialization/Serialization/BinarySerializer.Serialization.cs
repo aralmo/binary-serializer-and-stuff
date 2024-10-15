@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-public partial class BinarySerializer<TModel>
+internal partial class BinarySerializer<TModel>
 {
     static readonly Dictionary<Type, Action<object, Stream>> classSerializersCache = new Dictionary<Type, Action<object, Stream>>();
     static readonly Dictionary<Type, Action<object, Stream>> abstractClassSerializersCache = new Dictionary<Type, Action<object, Stream>>();
@@ -61,8 +61,7 @@ public partial class BinarySerializer<TModel>
             }
         };
     }
-
-    public Action<object, Stream> SerializerFor(Type type)
+    internal Action<object, Stream> SerializerFor(Type type)
     {
         switch (type)
         {

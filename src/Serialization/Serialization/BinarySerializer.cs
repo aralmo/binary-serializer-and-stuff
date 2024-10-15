@@ -3,9 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 
-public partial class BinarySerializer<TModel>
+/// <summary>
+/// This class serializes and deserializes to a binary file.
+/// It doesn't handle position like protobuf would do, so it requires that TModel has the same schema 
+/// on serialization and deserialization, but in exchange you don't need to setup anything beforehand.
+/// </summary>
+/// <typeparam name="TModel"></typeparam>
+internal partial class BinarySerializer<TModel>
 {
     SerializationSettings settings;
     static readonly Dictionary<Type, PropertyInfo[]> typesCache = new Dictionary<Type, PropertyInfo[]>();
@@ -41,9 +46,4 @@ public partial class BinarySerializer<TModel>
     {
         return (TModel) GetClassDeserializer(typeof(TModel))(stream);
     }
-}
-public class SerializationSettings
-{
-    public bool SerializePrivates;
-    public Encoding TextEncoding = Encoding.UTF8;
 }

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using FluentAssertions;
-namespace Serialization;
+namespace SerializationTests;
 public class ExecutionTimeTests
 {
     [Fact]

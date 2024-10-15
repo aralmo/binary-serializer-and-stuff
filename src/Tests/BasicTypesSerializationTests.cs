@@ -1,4 +1,4 @@
-namespace Serialization;
+namespace SerializationTests;
 
 public class BasicTypesSerializationTests
 {

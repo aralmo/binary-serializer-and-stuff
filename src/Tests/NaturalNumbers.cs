@@ -1,6 +1,6 @@
 using FluentAssertions;
 
-namespace Serialization;
+namespace SerializationTests;
 
 public class NaturalNumbersSerialization
 {
