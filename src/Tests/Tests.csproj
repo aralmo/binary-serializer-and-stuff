@@ -25,7 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Serialization\Serialization.csproj" />
-    <ProjectReference Include="..\GeneratedTests\GeneratedTests.csproj" />
   </ItemGroup>
 
 </Project>
